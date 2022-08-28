@@ -11,7 +11,7 @@ import './screens/order_screen.dart';
 import './providers/products_provider.dart';
 import './screens/user_products_screen.dart';
 import './screens/edit_product_screen.dart';
-
+import './screens/auth_screen.dart';
 
 void main() => runApp(MyApp());
 
@@ -36,8 +36,9 @@ class MyApp extends StatelessWidget {
             accentColor: Colors.greenAccent[100],
             fontFamily: 'Lato',
         appBarTheme: const AppBarTheme(backgroundColor: Colors.greenAccent,)),
-        home: const ProductsOverviewScreen(),
+        home: const AuthScreen(),
         routes: {
+          AuthScreen.rn: (context) => const AuthScreen(),
           ProductDetailsScreen.rn: (context) => const ProductDetailsScreen(),
           CartScreen.rn: (context) => CartScreen(),
           OrderScreen.rn: (context) => OrderScreen(),
