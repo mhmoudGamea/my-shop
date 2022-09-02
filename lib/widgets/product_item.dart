@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../providers/auth_provider.dart';
 import '../providers/cart_provider.dart';
 import '../providers/products_provider.dart';
 import '../screens/product_details_screen.dart';
@@ -12,7 +13,7 @@ class ProductItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final product = Provider.of<Product>(context); // a disaster will happen if u set listen: false
     final cartsData = Provider.of<CartProvider>(context, listen: false);
-    //final cart = Provider.of<Cart>(context);
+    final auth = Provider.of<Auth>(context);
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
@@ -24,7 +25,7 @@ class ProductItem extends StatelessWidget {
               icon:
               Icon(product.isFav ? Icons.favorite : Icons.favorite_border),
               color: Colors.greenAccent[400],
-              onPressed: () => product.toggleFav(product.id),
+              onPressed: () => product.toggleFav(product.id, auth.getUserId!, auth.getToken!),
             ),
           ),
           title: Text(

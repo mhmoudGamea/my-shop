@@ -54,9 +54,7 @@ class _OrderItemState extends State<OrderItem> {
         });
       },
       onDismissed: (direction) {
-       print(widget.order.products.length);
         Provider.of<OrderProvider>(context, listen: false).removeOrder(widget.order.id);
-        print(widget.order.products.length);
       },
       child: Card(
         margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 15),

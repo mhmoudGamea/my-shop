@@ -20,15 +20,43 @@ class Order with ChangeNotifier {
 }
 
 class OrderProvider with ChangeNotifier {
+  final String _token;
+  final String _userId;
   List<Order> _orders = [];
+
+  OrderProvider(this._token, this._userId, this._orders);
 
   List<Order> get getOrders {
     return [..._orders];
   }
 
+  Future<void> fetchAndSetOrders() async {
+    Uri uri = Uri.parse(
+        'https://my-shop-33f05-default-rtdb.firebaseio.com/orders/$_userId.json?auth=$_token');
+    final response = await http.get(uri);
+    if (json.decode(response.body) == null) return;
+    final extractedData = json.decode(response.body) as Map<String, dynamic>;
+    final List<Order> loadedOrders = [];
+    extractedData.forEach((orderId, orderData) {
+      // note that orderId here is of type String.
+      // note that orderData here is a map {orderId: {orderData}, orderId: {orderData}} and so on.
+      loadedOrders.add(Order(
+        id: orderId,
+        total: orderData['amount'], // amount = quantity * price = total
+        date: DateTime.parse(orderData['date']),
+        products: (orderData['products'] as List<dynamic>) // products stored as a List
+            .map((c) =>
+                Cart(id: c['id'], title: c['title'], quantity: c['quantity'], price: c['price']))
+            .toList(),
+      ));
+    });
+    _orders = loadedOrders.reversed.toList();
+    notifyListeners();
+  }
+
   Future<void> addOrder(List<Cart> cartProducts, double total) async {
     Uri uri = Uri.parse(
-        'https://my-shop-33f05-default-rtdb.firebaseio.com/orders.json');
+        'https://my-shop-33f05-default-rtdb.firebaseio.com/orders/$_userId.json?auth=$_token');
     final timeStamp = DateTime.now();
     final response = await http.post(uri,
         body: json.encode({
@@ -56,42 +84,13 @@ class OrderProvider with ChangeNotifier {
       );
       notifyListeners();
     } else {
-      print('you cant order');
+      debugPrint('you cant order');
     }
-  }
-
-  Future<void> fetchAndSetOrders() async {
-    Uri uri = Uri.parse(
-        'https://my-shop-33f05-default-rtdb.firebaseio.com/orders.json');
-    final response = await http.get(uri);
-    print(response.body);
-    if (json.decode(response.body) == null) return;
-    final extractedData = json.decode(response.body) as Map<String, dynamic>;
-    final List<Order> loadedOrders = [];
-    extractedData.forEach((orderId, orderData) {
-      // note that orderId here is of type String.
-      // note that orderData here is a map {orderId: {orderData}, orderId: {orderData}} and so on.
-      loadedOrders.add(Order(
-        id: orderId,
-        total: orderData['amount'], // amount = quantity * price = total
-        date: DateTime.parse(orderData['date']),
-        products: (orderData['products']
-                as List<dynamic>) // products stored as a List
-            .map((c) => Cart(
-                id: c['id'],
-                title: c['title'],
-                quantity: c['quantity'],
-                price: c['price']))
-            .toList(),
-      ));
-    });
-    _orders = loadedOrders.reversed.toList();
-    notifyListeners();
   }
 
   Future<void> removeOrder(String orderId) async {
     Uri uri = Uri.parse(
-        'https://my-shop-33f05-default-rtdb.firebaseio.com/orders/$orderId.json');
+        'https://my-shop-33f05-default-rtdb.firebaseio.com/orders/$orderId.json?auth=$_token');
     final orderIndex = _orders.indexWhere((prod) => prod.id == orderId);
     Order? myOrder = _orders[orderIndex];
     _orders.removeAt(orderIndex);

@@ -23,7 +23,10 @@ class Cart with ChangeNotifier {
 }
 
 class CartProvider with ChangeNotifier {
+  final String _token;
+  final String _userId;
   Map<String, Cart> _items = {};
+  CartProvider(this._token, this._userId, this._items);
 
   Map<String, Cart> get getItems {
     return {..._items};
@@ -38,6 +41,11 @@ class CartProvider with ChangeNotifier {
     return quantityCount;
   }
 
+  // String get getCartId {
+  //   _items.map((key, value) {
+  //     return
+  //   });
+  // }
   double get getTotalAmount {
     // price * quantity
     var totalAmount = 0.0;
@@ -49,13 +57,11 @@ class CartProvider with ChangeNotifier {
 
   Future<void> fetchAndSetProducts() async {
     Uri uri = Uri.parse(
-        'https://my-shop-33f05-default-rtdb.firebaseio.com/carts.json');
+        'https://my-shop-33f05-default-rtdb.firebaseio.com/carts/$_userId.json?auth=$_token');
     try {
       final response = await http.get(uri);
       if (json.decode(response.body) == null) return;
       final extractedData = json.decode(response.body) as Map<String, dynamic>;
-      print(extractedData);
-      print(json.decode(response.body));
       Map<String, Cart> loadedCarts = {};
       extractedData.forEach((key, value) {
         loadedCarts.putIfAbsent(
@@ -83,7 +89,7 @@ class CartProvider with ChangeNotifier {
         }
       });
       Uri uri = Uri.parse(
-          'https://my-shop-33f05-default-rtdb.firebaseio.com/carts/${cart.id}.json');
+          'https://my-shop-33f05-default-rtdb.firebaseio.com/carts/$_userId/${cart.id}.json?auth=$_token');
       await http.patch(uri,
           body: json.encode({
             'quantity': cart.quantity + 1,
@@ -100,7 +106,7 @@ class CartProvider with ChangeNotifier {
     } else {
       // add new product to cart
       Uri uri = Uri.parse(
-          'https://my-shop-33f05-default-rtdb.firebaseio.com/carts.json');
+          'https://my-shop-33f05-default-rtdb.firebaseio.com/carts/$_userId.json?auth=$_token');
       final response = await http.post(uri,
           body: json.encode({
             'productId': productId,
@@ -140,7 +146,7 @@ class CartProvider with ChangeNotifier {
     _items.remove(productId);
     notifyListeners();
     Uri uri = Uri.parse(
-        'https://my-shop-33f05-default-rtdb.firebaseio.com/carts/${cart.id}.json');
+        'https://my-shop-33f05-default-rtdb.firebaseio.com/carts/$_userId/${cart.id}.json?auth=$_token');
     final response = await http.delete(uri);
     if (response.statusCode >= 400) {
       _items.putIfAbsent(
@@ -175,7 +181,10 @@ class CartProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void clear() {
+  void clear() async{
+    Uri uri = Uri.parse(
+        'https://my-shop-33f05-default-rtdb.firebaseio.com/carts/$_userId.json?auth=$_token');
+    final response = await http.delete(uri);
     _items = {};
     notifyListeners();
   }

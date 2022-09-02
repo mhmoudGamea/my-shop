@@ -24,17 +24,14 @@ class Product with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> toggleFav(String id) async {
+  Future<void> toggleFav(String productId, String userId, String token) async {
     var oldStatus = isFav;
     isFav = !isFav;
     notifyListeners();
     Uri uri = Uri.parse(
-        'https://my-shop-33f05-default-rtdb.firebaseio.com/products/$id.json');
+        'https://my-shop-33f05-default-rtdb.firebaseio.com/userFavorites/$userId/$productId.json?auth=$token');
     try {
-      final response = await http.patch(uri,
-          body: json.encode(<String, dynamic>{
-            'isFavorite': isFav,
-          }));
+      final response = await http.put(uri, body: json.encode(isFav));
       if (response.statusCode >= 400) {
         _setFav(oldStatus);
       }
@@ -45,7 +42,11 @@ class Product with ChangeNotifier {
 }
 
 class ProductsProvider with ChangeNotifier {
+  final String _token;
+  final String _userId;
   List<Product> _items = [];
+
+  ProductsProvider(this._token, this._userId, this._items);
 
   List<Product> get getItems {
     return [..._items];
@@ -66,13 +67,22 @@ class ProductsProvider with ChangeNotifier {
   }
 
   //get request
-  Future<void> fetchAndSetProducts() async {
-    Uri uri = Uri.parse(
-        'https://my-shop-33f05-default-rtdb.firebaseio.com/products.json');
+  Future<void> fetchAndSetProducts([var filterOption = false]) async {
+    Uri uri = filterOption
+        ? Uri.parse(
+            'https://my-shop-33f05-default-rtdb.firebaseio.com/products.json?auth=$_token&orderBy="creatorId"&equalTo="$_userId"')
+        : Uri.parse(
+            'https://my-shop-33f05-default-rtdb.firebaseio.com/products.json?auth=$_token');
     try {
       final response = await http.get(uri);
-      if (json.decode(response.body) == null) return;
       final extractedData = json.decode(response.body) as Map<String, dynamic>;
+      if (json.decode(response.body) == null) {
+        return;
+      } // error type null can't assigned to type int
+      uri = Uri.parse(
+          'https://my-shop-33f05-default-rtdb.firebaseio.com/userFavorites/$_userId.json?auth=$_token');
+      final favResponse = await http.get(uri);
+      final favData = json.decode(favResponse.body); //{'productId', bool}
       final List<Product> loadedProducts = [];
       extractedData.forEach((productId, productData) {
         loadedProducts.add(Product(
@@ -81,7 +91,7 @@ class ProductsProvider with ChangeNotifier {
           description: productData['description'],
           price: productData['price'],
           imageUrl: productData['imageUrl'],
-          isFav: productData['isFavorite'],
+          isFav: favData == null ? false : favData[productId] ?? false,
         ));
       });
       _items = loadedProducts;
@@ -94,7 +104,7 @@ class ProductsProvider with ChangeNotifier {
   //post request
   Future<void> addProduct(Product product) async {
     Uri uri = Uri.parse(
-        'https://my-shop-33f05-default-rtdb.firebaseio.com/products.json');
+        'https://my-shop-33f05-default-rtdb.firebaseio.com/products.json?auth=$_token');
     try {
       final response = await http.post(uri,
           body: json.encode(<String, dynamic>{
@@ -102,7 +112,7 @@ class ProductsProvider with ChangeNotifier {
             'description': product.description,
             'price': product.price,
             'imageUrl': product.imageUrl,
-            'isFavorite': product.isFav,
+            'creatorId': _userId,
           }));
       final newProduct = Product(
           id: json.decode(response.body)['name'],
@@ -123,7 +133,7 @@ class ProductsProvider with ChangeNotifier {
     int productIndex = _items.indexWhere((element) => element.id == id);
     if (productIndex >= 0) {
       Uri uri = Uri.parse(
-          'https://my-shop-33f05-default-rtdb.firebaseio.com/products/$id.json');
+          'https://my-shop-33f05-default-rtdb.firebaseio.com/products/$id.json?auth=$_token');
       try {
         await http.patch(uri,
             body: json.encode(<String, dynamic>{
@@ -146,7 +156,7 @@ class ProductsProvider with ChangeNotifier {
   // here i use optimistic updating pattern where i roll back deletion if there are any error in delete process
   Future<void> deleteProduct(String id) async {
     Uri uri = Uri.parse(
-        'https://my-shop-33f05-default-rtdb.firebaseio.com/products/$id.json');
+        'https://my-shop-33f05-default-rtdb.firebaseio.com/products/$id.json?auth=$_token');
     final existingProductIndex = _items.indexWhere((prod) => prod.id == id);
     Product? myProductReference = _items[existingProductIndex];
     _items.removeAt(existingProductIndex);
